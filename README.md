@@ -1,3 +1,5 @@
+[![Publish to GitHub Pages](https://github.com/booooza/nextjs-yolov10-onnx/actions/workflows/nextjs.yml/badge.svg)](https://github.com/booooza/nextjs-yolov10-onnx/actions/workflows/nextjs.yml)
+
 # YOLOv10 Real-Time Object Detection Demo
 
 This project is a web-based real-time object detection and classification app built with React, ONNX Runtime Web, and YOLOv10 models (n, s, m variants). It captures webcam frames, processes them with a selected YOLO model in the browser, and displays detections with bounding boxes and labels.
@@ -33,7 +35,7 @@ First, run the development server:
 npm run dev
 ```
 
-Open [http://localhost:3000/mlops-project-G01](http://localhost:3000/mlops-project-G01) with your browser to see the result.
+Open [http://localhost:3000/nextjs-yolov10-onnx](http://localhost:3000/nextjs-yolov10-onnx) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
