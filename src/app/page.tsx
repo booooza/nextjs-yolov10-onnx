@@ -83,7 +83,7 @@ export default function Home() {
 
   // Handle confidence threshold change
   const handleConfidenceChange = (
-    event: React.ChangeEvent<HTMLInputElement>,
+    event: React.ChangeEvent<HTMLInputElement>
   ) => {
     setConfidenceThreshold(parseFloat(event.target.value));
   };
@@ -121,7 +121,7 @@ export default function Home() {
           const results = await runInference(
             session,
             confidenceThreshold,
-            imageData,
+            imageData
           );
           const endTime = performance.now();
 
@@ -155,7 +155,7 @@ export default function Home() {
     detections.forEach((detection) => {
       const [x, y, w, h] = detection.bbox;
       const label = `${detection.label} ${Math.round(
-        detection.confidence * 100,
+        detection.confidence * 100
       )}%`;
 
       // Draw bounding box
@@ -218,7 +218,7 @@ export default function Home() {
           {/* Webcam container */}
           <div className="relative" style={{ height: "640px", width: "640px" }}>
             <Webcam
-              mirrored={true}
+              mirrored={facingMode === "user"}
               audio={false}
               ref={webcamRef}
               style={{ width: "100%", height: "100%", objectFit: "cover" }}
@@ -325,8 +325,8 @@ export default function Home() {
                     {session
                       ? selectedModel.name
                       : isLoadingModel
-                        ? "Loading..."
-                        : "No Model Loaded"}
+                      ? "Loading..."
+                      : "No Model Loaded"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -352,19 +352,19 @@ export default function Home() {
                       isProcessing
                         ? "text-yellow-600"
                         : isLoadingModel
-                          ? "text-blue-600"
-                          : session
-                            ? "text-green-600"
-                            : "text-red-600"
+                        ? "text-blue-600"
+                        : session
+                        ? "text-green-600"
+                        : "text-red-600"
                     }`}
                   >
                     {isLoadingModel
                       ? "Loading Model"
                       : isProcessing
-                        ? "Processing"
-                        : session
-                          ? "Ready"
-                          : "No Model"}
+                      ? "Processing"
+                      : session
+                      ? "Ready"
+                      : "No Model"}
                   </span>
                 </div>
               </div>
