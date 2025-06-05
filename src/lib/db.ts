@@ -2,7 +2,6 @@ const DB_NAME = "onnx-model-cache";
 const DB_VERSION = 2;
 const STORE_NAME = "models";
 
-
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -32,7 +31,9 @@ export async function saveModelToCache(key: string, buffer: ArrayBuffer) {
   db.close();
 }
 
-export async function loadModelFromCache(key: string): Promise<ArrayBuffer | null> {
+export async function loadModelFromCache(
+  key: string,
+): Promise<ArrayBuffer | null> {
   const db = await openDB();
   const tx = db.transaction(STORE_NAME, "readonly");
   const result = await new Promise<ArrayBuffer | null>((resolve, reject) => {

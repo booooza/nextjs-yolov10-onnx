@@ -4,7 +4,7 @@ import { loadModelFromCache, saveModelToCache } from "@/lib/db";
 import { DetectionResultProps, runInference } from "@/lib/inference";
 import { Model, MODELS } from "@/lib/models";
 import { InferenceSession } from "onnxruntime-web";
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import { useRef, useState } from "react";
 import Webcam from "react-webcam";
 
@@ -20,6 +20,8 @@ export default function Home() {
   const [inferenceTime, setInferenceTime] = useState<number>(500);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [isLoadingModel, setIsLoadingModel] = useState<boolean>(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("user");
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   // Load ONNX model
   const getModel = async (model: Model) => {
@@ -30,7 +32,13 @@ export default function Home() {
       if (!modelBuffer) {
         // Fetch and cache
         const response = await fetch(model.url);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         modelBuffer = await response.arrayBuffer();
+        if (modelBuffer.byteLength === 0) {
+          throw new Error("Empty model buffer");
+        }
         await saveModelToCache(model.key, modelBuffer);
         console.log(`Cached model: ${model.name}`);
       } else {
@@ -42,11 +50,14 @@ export default function Home() {
       console.log(`Model loaded successfully: ${model.name}`);
     } catch (error) {
       console.error(`Failed to load model ${model.name}:`, error);
+      setSession(null);
+      setSelectedModel(MODELS[0]); // Reset to default model
     } finally {
       setIsLoadingModel(false);
     }
   };
 
+  // eslint-disable-next-line
   const clearModelCache = () => {
     const request = indexedDB.open("onnx-model-cache", 1);
     request.onsuccess = () => {
@@ -72,13 +83,13 @@ export default function Home() {
 
   // Handle confidence threshold change
   const handleConfidenceChange = (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     setConfidenceThreshold(parseFloat(event.target.value));
   };
 
   // Process a single frame from the webcam
-  const processFrame = async () => {
+  const processFrame = useCallback(async () => {
     if (!webcamRef.current || !session || !canvasRef.current || isLoadingModel)
       return;
 
@@ -110,7 +121,7 @@ export default function Home() {
           const results = await runInference(
             session,
             confidenceThreshold,
-            imageData
+            imageData,
           );
           const endTime = performance.now();
 
@@ -128,7 +139,7 @@ export default function Home() {
     } else {
       setIsProcessing(false);
     }
-  };
+  }, [confidenceThreshold, session, isLoadingModel]);
 
   // Draw bounding boxes on canvas
   const drawBoundingBoxes = (detections: DetectionResultProps[]) => {
@@ -144,7 +155,7 @@ export default function Home() {
     detections.forEach((detection) => {
       const [x, y, w, h] = detection.bbox;
       const label = `${detection.label} ${Math.round(
-        detection.confidence * 100
+        detection.confidence * 100,
       )}%`;
 
       // Draw bounding box
@@ -163,6 +174,12 @@ export default function Home() {
       ctx.fillText(label, x + 5, y - 5);
     });
   };
+
+  useEffect(() => {
+    navigator.mediaDevices.enumerateDevices().then((devices) => {
+      setDevices(devices);
+    });
+  }, []);
 
   useEffect(() => {
     if (!session && !isLoadingModel) {
@@ -186,6 +203,7 @@ export default function Home() {
     inferenceTime,
     selectedModel,
     confidenceThreshold,
+    processFrame,
   ]);
 
   return (
@@ -207,7 +225,7 @@ export default function Home() {
               videoConstraints={{
                 height: HEIGHT,
                 width: WIDTH,
-                // facingMode: "user",
+                facingMode: facingMode,
               }}
               width={WIDTH}
               height={HEIGHT}
@@ -227,7 +245,7 @@ export default function Home() {
           </div>
 
           {/* Controls and info panel */}
-          <div className="flex flex-col gap-6 xl:w-80">
+          <div className="flex flex-col gap-6 w-full xl:w-80">
             {/* Model Selection Dropdown */}
             <div className="flex flex-col gap-2 p-4 rounded-lg border font-[family-name:var(--font-geist-mono)]">
               <h3 className="text-lg font-semibold text-gray-200 mb-2">
@@ -279,6 +297,20 @@ export default function Home() {
                   <span>100%</span>
                 </div>
               </div>
+
+              {/* Camera Switch Button */}
+              {devices.length > 1 && (
+                <button
+                  onClick={() => {
+                    const newFacingMode =
+                      facingMode === "user" ? "environment" : "user";
+                    setFacingMode(newFacingMode);
+                  }}
+                  className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Switch Camera
+                </button>
+              )}
             </div>
 
             {/* Model Information Panel */}
@@ -293,8 +325,8 @@ export default function Home() {
                     {session
                       ? selectedModel.name
                       : isLoadingModel
-                      ? "Loading..."
-                      : "No Model Loaded"}
+                        ? "Loading..."
+                        : "No Model Loaded"}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -320,45 +352,21 @@ export default function Home() {
                       isProcessing
                         ? "text-yellow-600"
                         : isLoadingModel
-                        ? "text-blue-600"
-                        : session
-                        ? "text-green-600"
-                        : "text-red-600"
+                          ? "text-blue-600"
+                          : session
+                            ? "text-green-600"
+                            : "text-red-600"
                     }`}
                   >
                     {isLoadingModel
                       ? "Loading Model"
                       : isProcessing
-                      ? "Processing"
-                      : session
-                      ? "Ready"
-                      : "No Model"}
+                        ? "Processing"
+                        : session
+                          ? "Ready"
+                          : "No Model"}
                   </span>
                 </div>
-              </div>
-            </div>
-
-            {/* Detection Results Panel */}
-            <div className="flex flex-col gap-3 p-4 rounded-lg border font-[family-name:var(--font-geist-mono)]">
-              <h3 className="text-lg font-semibold text-gray-200 mb-2">
-                Current Detections
-              </h3>
-              <div className="space-y-2 max-h-40 overflow-y-auto">
-                {detectionResult && detectionResult.length > 0 ? (
-                  detectionResult.map((detection, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between items-center text-sm p-2 rounded border"
-                    >
-                      <span className="font-medium">{detection.label}</span>
-                      <span className="text-gray-200">
-                        {Math.round(detection.confidence * 100)}%
-                      </span>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-sm text-gray-200 p-2">No detections</div>
-                )}
               </div>
             </div>
           </div>
